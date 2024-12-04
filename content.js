@@ -1,4 +1,3 @@
-// Check if the square already exists
 let square = document.getElementById("movable-square");
 
 if (!square) {
@@ -14,83 +13,45 @@ square.style.left = `${savedPosition.left}px`;
 let isVisible = true;
 
 document.addEventListener("keydown", (e) => {
-  if (e.key === "T" && e.shiftKey) {
+  if (e.key.toLowerCase() === "t" && e.shiftKey) {
     isVisible = !isVisible;
     square.style.display = isVisible ? "flex" : "none";
   }
 });
 
-// Click event to expand and show URLs
-square.addEventListener("click", (e) => {
+square.addEventListener("click", async (e) => {
   if (!square.classList.contains("expanded") && !e.target.classList.contains("tab-link")) {
-    chrome.runtime.sendMessage({ type: "getTabs" }, (response) => {
-      if (chrome.runtime.lastError) {
-        console.error("Error fetching tabs: ", chrome.runtime.lastError.message);
-        return;
-      }
-      if (response && response.urls && response.urls.length > 0) {
+    try {
+      const response = await chrome.runtime.sendMessage({ type: "getTabs" });
+      console.log("Response from background:", response);
+      
+      if (response && response.urls) {
         const urlsHtml = response.urls
           .map((url) => `<p class="tab-link" data-url="${url}">${url}</p>`)
           .join("");
+          
         square.innerHTML = `
-          <div class="content">
-            <div class="heading">Open Tabs</div>
-            <div class="urls-content">${urlsHtml}</div>
-          </div>
+          <div class="heading">Tabs</div>
+          <div class="urls-content">${urlsHtml}</div>
         `;
         square.classList.add("expanded");
       }
-    });
+    } catch (error) {
+      console.error("Error fetching tabs:", error);
+    }
   } else if (!e.target.classList.contains("tab-link")) {
     square.innerHTML = "";
     square.classList.remove("expanded");
   }
 });
 
-// Handle updates to the list of open tabs
-chrome.runtime.onMessage.addListener((message) => {
-  if (message.type === "updateTabs") {
-    chrome.tabs.query({}, (tabs) => {
-      const urls = tabs.map((tab) => tab.url);
-      const urlsHtml = urls
-        .map((url) => `<p class="tab-link" data-url="${url}">${url}</p>`)
-        .join("");
-      const urlsContent = square.querySelector(".urls-content");
-      if (urlsContent) {
-        urlsContent.innerHTML = urlsHtml;
-      }
-    });
-  }
-});
-
-// Add click event to the links inside the square
-square.addEventListener("click", (e) => {
-  if (e.target && e.target.classList.contains("tab-link")) {
-    const url = e.target.getAttribute("data-url");
-
-    // Check if the URL is already open in any tab
-    chrome.tabs.query({}, (tabs) => {
-      const existingTab = tabs.find((tab) => tab.url === url);
-      if (existingTab) {
-        // If the tab is open, switch to it
-        chrome.tabs.update(existingTab.id, { active: true });
-      } else {
-        // If the tab is not open, open a new tab with the URL
-        chrome.tabs.create({ url: url });
-      }
-    });
-
-    // Prevent the click from closing the square
-    e.stopPropagation();
-  }
-});
-
-// Make the square draggable
 let isDragging = false;
 let offsetX = 0;
 let offsetY = 0;
 
 square.addEventListener("mousedown", (e) => {
+  if (e.target.classList.contains("tab-link")) return;
+  
   isDragging = true;
   document.body.style.userSelect = "none";
   offsetX = e.clientX - square.offsetLeft;
@@ -98,11 +59,13 @@ square.addEventListener("mousedown", (e) => {
 
   const onMouseMove = (e) => {
     if (isDragging) {
-      square.style.left = `${e.clientX - offsetX}px`;
-      square.style.top = `${e.clientY - offsetY}px`;
+      const left = e.clientX - offsetX;
+      const top = e.clientY - offsetY;
+      
+      square.style.left = `${left}px`;
+      square.style.top = `${top}px`;
 
-      const position = { top: e.clientY - offsetY, left: e.clientX - offsetX };
-      localStorage.setItem("squarePosition", JSON.stringify(position));
+      localStorage.setItem("squarePosition", JSON.stringify({ top, left }));
     }
   };
 
@@ -115,4 +78,33 @@ square.addEventListener("mousedown", (e) => {
 
   document.addEventListener("mousemove", onMouseMove);
   document.addEventListener("mouseup", onMouseUp);
+});
+
+square.addEventListener("click", async (e) => {
+  if (e.target.classList.contains("tab-link")) {
+    const url = e.target.getAttribute("data-url");
+    try {
+      await chrome.runtime.sendMessage({ 
+        type: "switchToTab", 
+        url: url 
+      });
+    } catch (error) {
+      console.error("Error switching tabs:", error);
+    }
+    e.stopPropagation();
+  }
+});
+
+// Listen for tab updates
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "updateTabs" && square.classList.contains("expanded")) {
+    const urlsHtml = message.urls
+      .map((url) => `<p class="tab-link" data-url="${url}">${url}</p>`)
+      .join("");
+    
+    const urlsContent = square.querySelector(".urls-content");
+    if (urlsContent) {
+      urlsContent.innerHTML = urlsHtml;
+    }
+  }
 });
