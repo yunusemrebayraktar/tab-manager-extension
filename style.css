@@ -1,0 +1,64 @@
+:root {
+  --dark: rgb(41, 40, 40);
+  --light: #e9e9e9;
+  --red: rgb(185, 56, 28);
+  --secondary: #4682b4;
+}
+
+#movable-square {
+  width: 60px;
+  height: 40px;
+  background-color: var(--red);
+  border-radius: 40px;
+  position: fixed;
+  top: 100px;
+  left: 200px;
+  cursor: pointer;
+  z-index: 9999;
+  transition: all 0.5s ease;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  opacity: 1;
+}
+
+#movable-square.expanded {
+  width: 200px;
+  height: auto;
+  max-height: 50vh;
+  border-radius: 10px;
+  background-color: var(--light);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  padding: 8px;
+  margin: 10px 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  overflow-y: auto;
+  opacity: 1;
+  transition: all 0.5s ease;
+}
+
+.heading {
+  color: var(--dark);
+  font-weight: bold;
+  margin-bottom: 10px;
+  font-size: 2rem;
+}
+
+.urls-content {
+  font-size: 12px;
+  padding: 20px 10px;
+  border-radius: 6px;
+  line-height: 1.5;
+  width: 100%;
+}
+
+.urls-content p {
+  background-color: var(--red);
+  padding: 5px;
+  border-radius: 6px;
+  color: var(--white);
+  margin: 5px 0;
+  word-wrap: break-word;
+}
